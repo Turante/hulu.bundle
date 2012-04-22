@@ -75,7 +75,6 @@ def MainMenu():
   return oc
 
 ####################################################################################################
-
 def MyHulu(title):
 
   # Attempt to login
@@ -141,7 +140,11 @@ def Feeds(title, feed_url):
 
     title = item.xpath('.//title/text()')[0]
     try:
-      Log(title)
+
+      # A feed will normally contain individual episodes. Their titles are of formats similar to the following:
+      #    The Voice - s2 | e15 - Quarterfinals: Live Eliminations
+      # If we detect this, then we can extract the available information. If this fails, then we will simply 
+      # fallback to a normal VideoClipObject
       details = REGEX_TV_EPISODE_FEED.match(title).groupdict()
 
       oc.add(EpisodeObject(
@@ -155,7 +158,6 @@ def Feeds(title, feed_url):
         originally_available_at = date,
         rating = rating))
     except:
-      Log.Exception('BOOM')
 
       oc.add(VideoClipObject(
         url = url,
