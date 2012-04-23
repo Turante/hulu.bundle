@@ -10,6 +10,7 @@ ICON_PREFS      = 'icon-prefs.png'
 
 URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
 EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
+URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list'
 
 REGEX_CHANNEL_LISTINGS    = Regex('Element.replace\("channel", "(.+)\);')
 REGEX_SHOW_LISTINGS       = Regex('Element.update\("show_list", "(.+)\);')
@@ -77,6 +78,7 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Highest Rated Videos", feed_url = "http://www.hulu.com/feed/highest_rated/videos"), title = "Highest Rated Videos"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Soon-to-Expire Videos", feed_url = "http://www.hulu.com/feed/expiring/videos"), title = "Soon-to-Expire Videos"))
   oc.add(SearchDirectoryObject(identifier="com.plexapp.search.hulu", title = "Search...", prompt = "Search for Videos", thumb = R(ICON_SEARCH)))
+  oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
   return oc
 
 ####################################################################################################
@@ -88,6 +90,10 @@ def MyHulu(title):
 
   if loginResult:
     oc = ObjectContainer()
+    oc.add(DirectoryObject(key = Callback(Queue, title = "My Queue"), title = "My Queue"))
+    oc.add(DirectoryObject(key = Callback(Recommended, title = "TV Show Recommendations", url = "http://www.hulu.com/recommendations?src=topnav&video_type=TV"), title = "TV Show Recommendations"))
+    oc.add(DirectoryObject(key = Callback(Recommended, title = "Movie Recommendations", url = "http://www.hulu.com/recommendations?src=topnav&video_type=Movie"), title = "Movie Recommendations"))
+    oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
   else:
     oc = MessageContainer("User info required", "Please enter your Hulu email address and password in Preferences.")
   return oc
@@ -291,4 +297,35 @@ def ListEpisodes(title, show_id, show_name, season, items_per_page = 5):
   # Sort the episodes based upon index
   oc.objects.sort(key = lambda obj: obj.index)
 
+  return oc
+
+####################################################################################################
+def Queue(title):
+  oc = ObjectContainer(title2 = title)
+
+  page = HTML.ElementFromURL(URL_QUEUE)
+  for item in page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
+
+    url = item.xpath('.//td[@class = "c2"]//a')[0].get('href')
+    title = item.xpath('.//td[@class = "c2"]//a/b/text()')[0]
+    thumb = item.xpath('.//td[@class = "c2"]//img')[0].get('src')
+    date = item.xpath('.//td[@class = "c5"]/text()')[0]
+    date = Datetime.ParseDate(date)
+
+    oc.add(VideoClipObject(
+      url = url,
+      title = title,
+      thumb = thumb,
+      originally_available_at = date))
+
+  return oc
+
+####################################################################################################
+def Recommended(title, url):
+  oc = ObjectContainer(title2 = title)
+  return oc
+
+####################################################################################################
+def Favorites(title):
+  oc = ObjectContainer(title2 = title)
   return oc
