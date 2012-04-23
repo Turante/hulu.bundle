@@ -8,13 +8,15 @@ ICON_DEFAULT    = 'icon-default.png'
 ICON_SEARCH     = 'icon-search.png'
 ICON_PREFS      = 'icon-prefs.png'
 
-URL_LISTINGS    = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
-SEASON_LISTINGS = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
+URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
+EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
 
 REGEX_CHANNEL_LISTINGS    = Regex('Element.replace\("channel", "(.+)\);')
 REGEX_SHOW_LISTINGS       = Regex('Element.update\("show_list", "(.+)\);')
 REGEX_RATING_FEED         = Regex('Rating: ([^ ]+) .+')
 REGEX_TV_EPISODE_FEED     = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P<episode>[0-9]+) - (?P<title>.+)$')
+REGEX_TV_EPISODE_LISTING  = Regex('Season (?P<season>[0-9]+)\s+:\s+Ep\.\s+(?P<episode>[0-9]+)\s+\((?P<mins>[0-9]+):(?P<secs>[0-9]+)\)')
+REGEX_TV_EPISODE_EMBED    = Regex('Season (?P<season>[0-9]+)\s+.+')
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
@@ -221,15 +223,72 @@ def ListSeasons(title, show_url, info_url, show_id):
 
     season_number = int(season)
     oc.add(SeasonObject(
-      key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], season = season_number),
+      key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = season_number),
       rating_key = show_url,
-      title = details['name'],
+      show = details['name'],
       index = season_number,
+      title = "Season %d" % season_number,
       summary = details['description'],
       thumb = details['thumbnail_url']))
+
+  if len(oc) == 0:
+    # If we haven't found a list of seasons, we can assume that there is only one. However, we still
+    # need to extract this information so that we can correctly return the episodes directly.
+    try:
+      show_id = show_page.xpath('//input[@name = "shared_id"]')[0].get('value')
+      show_name = show_page.xpath('//meta[@property = "og:title"]')[0].get('content')
+
+      season_text = show_page.xpath('//span[@class = "video-info"]/text()')[0]
+      season = REGEX_TV_EPISODE_EMBED.match(season_text).groupdict()['season']
+
+      return ListEpisodes(title, show_id, show_name, season)
+    except: 
+      pass
 
   return oc
 
 ####################################################################################################
-def ListEpisodes(title, show_id, season):
-  return ObjectContainer(title2 = title)
+def ListEpisodes(title, show_id, show_name, season, items_per_page = 5):
+  oc = ObjectContainer(title2 = title)
+
+  page = 1
+  while(True):
+
+    episodes_page = HTML.ElementFromURL(EPISODE_LISTINGS % (items_per_page, page, int(season), show_id))
+
+    # If we have requested a page with no items in it, then there are no more episodes are available
+    episodes = episodes_page.xpath('//li')
+    if len(episodes) == 0:
+      break
+
+    for item in episodes:
+      url = item.xpath('.//a')[0].get('href')
+      title = item.xpath('.//a/text()')[0]
+      thumb = item.xpath('.//img')[0].get('src')
+
+      details = item.xpath('.//span[@class = "video-info"]/text()')[0]
+      details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
+      episode_index = int(details_dict['episode'])
+      mins = int(details_dict['mins'])
+      secs = int(details_dict['secs'])
+      duration = ((mins * 60) + secs) * 1000
+
+      oc.add(EpisodeObject(
+        url = url,
+        title = title,
+        show = show_name,
+        index = episode_index,
+        thumb = thumb,
+        duration = duration))
+
+    # If we have requested (items_per_page) but less have been provided, then no more episodes are available
+    if len(episodes) != items_per_page:
+      break
+
+    # Increase the page
+    page = page + 1
+
+  # Sort the episodes based upon index
+  oc.objects.sort(key = lambda obj: obj.index)
+
+  return oc
