@@ -9,6 +9,7 @@ ICON_SEARCH     = 'icon-search.png'
 ICON_PREFS      = 'icon-prefs.png'
 
 URL_LISTINGS    = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
+SEASON_LISTINGS = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
 
 REGEX_CHANNEL_LISTINGS    = Regex('Element.replace\("channel", "(.+)\);')
 REGEX_SHOW_LISTINGS       = Regex('Element.update\("show_list", "(.+)\);')
@@ -17,6 +18,8 @@ REGEX_TV_EPISODE_FEED     = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
+
+CACHE_INTERVAL  = 3600
 
 ####################################################################################################
 def Start():
@@ -194,7 +197,7 @@ def ListShows(title, channel, item_type, display):
     elif details.has_key('episodes_count') and details['episodes_count'] > 0:
 
       oc.add(TVShowObject(
-        key = Callback(ListEpisodes, title = details['name'], show_id = details['id']),
+        key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
         rating_key = original_url,
         title = details['name'],
         summary = details['description'],
@@ -206,5 +209,27 @@ def ListShows(title, channel, item_type, display):
   return oc
 
 ####################################################################################################
-def ListEpisodes(title, show_id):
-  return ObjectContainer()
+def ListSeasons(title, show_url, info_url, show_id):
+  oc = ObjectContainer(title2 = title)
+
+  show_page = HTML.ElementFromURL(show_url)
+  details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
+
+  for season in show_page.xpath('//div[contains(@class, "season-filter")]/ul/li/text()'):
+    if season == 'All':
+      continue
+
+    season_number = int(season)
+    oc.add(SeasonObject(
+      key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], season = season_number),
+      rating_key = show_url,
+      title = details['name'],
+      index = season_number,
+      summary = details['description'],
+      thumb = details['thumbnail_url']))
+
+  return oc
+
+####################################################################################################
+def ListEpisodes(title, show_id, season):
+  return ObjectContainer(title2 = title)
