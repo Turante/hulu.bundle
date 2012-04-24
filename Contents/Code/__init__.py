@@ -16,8 +16,9 @@ REGEX_CHANNEL_LISTINGS    = Regex('Element.replace\("channel", "(.+)\);')
 REGEX_SHOW_LISTINGS       = Regex('Element.update\("show_list", "(.+)\);')
 REGEX_RATING_FEED         = Regex('Rating: ([^ ]+) .+')
 REGEX_TV_EPISODE_FEED     = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P<episode>[0-9]+) - (?P<title>.+)$')
-REGEX_TV_EPISODE_LISTING  = Regex('Season (?P<season>[0-9]+)\s+:\s+Ep\.\s+(?P<episode>[0-9]+)\s+\((?P<mins>[0-9]+):(?P<secs>[0-9]+)\)')
+REGEX_TV_EPISODE_LISTING  = Regex('Season (?P<season>[0-9]+) : Ep. (?P<episode>[0-9]+).*\((?P<mins>[0-9]+):(?P<secs>[0-9]+)\)', Regex.DOTALL)
 REGEX_TV_EPISODE_EMBED    = Regex('Season (?P<season>[0-9]+)\s+.+')
+REGEX_TV_EPISODE_QUEUE    = Regex('S(?P<season>[0-9]+) : Ep\. (?P<episode>[0-9]+)')
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
@@ -307,18 +308,77 @@ def Queue(title):
   for item in page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
 
     url = item.xpath('.//td[@class = "c2"]//a')[0].get('href')
-    title = item.xpath('.//td[@class = "c2"]//a/b/text()')[0]
+    title = ''.join(item.xpath('.//td[@class = "c2"]//a//text()'))
     thumb = item.xpath('.//td[@class = "c2"]//img')[0].get('src')
     date = item.xpath('.//td[@class = "c5"]/text()')[0]
     date = Datetime.ParseDate(date)
+    duration = int(TimeToMs(item.xpath('.//td[@class = "c2"]//span/text()')[0]))
 
-    oc.add(VideoClipObject(
-      url = url,
-      title = title,
-      thumb = thumb,
-      originally_available_at = date))
+    rating_full = len(item.xpath('.//td[@class = "c4"]/img[contains(@src, "full")]'))
+    rating_half = len(item.xpath('.//td[@class = "c4"]/img[contains(@src, "half")]'))
+    rating = float((2 * rating_full) + rating_half)
+
+    summary = None
+    try: summary = item.xpath('.//td[@class = "c2"]//div[@class = "expire-warning"]//text()')[0]
+    except: pass
+
+    video_details = item.xpath('.//td[@class = "c3"]/text()')[0]
+    if video_details.find('Movie') > -1:
+      oc.add(MovieObject(
+        url = url,
+        title = title,
+        summary = summary,
+        thumb = thumb,
+        rating = rating,
+        originally_available_at = date,
+        duration = duration))
+
+    else:
+      tv_details = REGEX_TV_EPISODE_QUEUE.match(video_details)
+      if tv_details != None:
+
+        tv_details_dict = tv_details.groupdict()
+        show = title.split(':')[0]
+        episode_title = title.split(':')[1]
+        oc.add(EpisodeObject(
+          url = url,
+          show = show,
+          title = episode_title,
+          summary = summary,
+          season = int(tv_details_dict['season']),
+          index = int(tv_details_dict['episode']),
+          thumb = thumb,
+          rating = rating,
+          originally_available_at = date,
+          duration = duration))
+
+      else:
+        oc.add(VideoClipObject(
+          url = url,
+          title = title,
+          summary = summary,
+          thumb = thumb,
+          rating = rating,
+          originally_available_at = date,
+          duration = duration))
 
   return oc
+
+####################################################################################################
+def TimeToMs(timecode):
+  seconds = 0
+  timecode = timecode.strip('(').rstrip(')')
+
+  try:
+    duration = timecode.split(':')
+    duration.reverse()
+
+    for i in range(0, len(duration)):
+      seconds += int(duration[i]) * (60**i)
+  except:
+    pass
+
+  return seconds * 1000
 
 ####################################################################################################
 def Recommended(title, url):
