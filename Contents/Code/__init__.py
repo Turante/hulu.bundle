@@ -95,7 +95,7 @@ def MyHulu(title):
     oc.add(DirectoryObject(key = Callback(Queue, title = "My Queue"), title = "My Queue"))
     oc.add(DirectoryObject(key = Callback(Recommended, title = "TV Show Recommendations", url = "http://www.hulu.com/recommendation/search?closed_captioned=0&video_type=TV"), title = "TV Show Recommendations"))
     oc.add(DirectoryObject(key = Callback(Recommended, title = "Movie Recommendations", url = "http://www.hulu.com/recommendation/search?closed_captioned=0&video_type=Movie"), title = "Movie Recommendations"))
-    oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
+    #oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
   else:
     oc = MessageContainer("User info required", "Please enter your Hulu email address and password in Preferences.")
   return oc
@@ -457,4 +457,8 @@ def Recommended(title, url):
 ####################################################################################################
 def Favorites(title):
   oc = ObjectContainer(title2 = title)
+
+  url = 'http://www.hulu.com/favorites/favorites_nav?user_id=' + Dict['_hulu_uid']
+  Log(url)
+
   return oc
