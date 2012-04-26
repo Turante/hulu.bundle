@@ -186,6 +186,7 @@ def Feeds(title, feed_url):
 def ListShows(title, channel, item_type, display):
   oc = ObjectContainer()
 
+  channel = channel.replace(' ','%20')
   shows_page = HTTP.Request(URL_LISTINGS % (channel, display, item_type, 0)).content
   html_content = REGEX_SHOW_LISTINGS.findall(shows_page)[0].decode('unicode_escape')
   html_page = HTML.ElementFromString(html_content)
