@@ -4,20 +4,8 @@
 <dict>
 	<key>ASResetHTTPCache</key>
 	<string>1</string>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
-	<key>CFBundleExecutable</key>
-	<string></string>
 	<key>CFBundleIdentifier</key>
 	<string>com.plexapp.plugins.hulu</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundlePackageType</key>
-	<string>AAPL</string>
-	<key>CFBundleSignature</key>
-	<string>hook</string>
-	<key>CFBundleVersion</key>
-	<string>1.0</string>
 	<key>PlexClientCapabilities</key>
 	<dict>
 		<key>protocols</key>
@@ -35,16 +23,9 @@
 	<array>
 		<string>Flash</string>
 	</array>
-	<key>PlexPluginMode</key>
-	<string>AlwaysOn</string>
 	<key>PlexPluginRegions</key>
 	<array>
 		<string>US</string>
 	</array>
-	<key>PlexSearchServices</key>
-	<dict>
-		<key>Hulu</key>
-		<string>com.plexapp.search.hulu</string>
-	</dict>
 </dict>
 </plist>
