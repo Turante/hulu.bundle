@@ -196,8 +196,6 @@ def ListShows(title, channel, item_type, display):
     if original_url.startswith('http://www.hulu.com/') == False:
       continue
 
-    Log("IABI: " + original_url)
-
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
     details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
