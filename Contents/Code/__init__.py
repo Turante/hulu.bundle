@@ -139,7 +139,7 @@ def Feeds(title, feed_url):
 
   feed = XML.ElementFromURL(feed_url)
   for item in feed.xpath('//channel/item'):
-    url = item.xpath('.//link/text()')[0]
+    url = item.xpath('.//guid/text()')[0]
     thumb = item.xpath('.//media:thumbnail', namespaces = NAMESPACES)[0].get('url')
     date = Datetime.ParseDate(item.xpath('.//pubDate/text()')[0])
 
@@ -195,6 +195,8 @@ def ListShows(title, channel, item_type, display):
     original_url = item.get('href').split('?')[0]
     if original_url.startswith('http://www.hulu.com/') == False:
       continue
+
+    Log("IABI: " + original_url)
 
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
     details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
