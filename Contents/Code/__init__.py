@@ -311,7 +311,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
   if len(oc) == 0 and show_url != None:
     show_page = HTML.ElementFromURL(show_url)
     for item in show_page.xpath('//div[@id = "episode-container"]//div[contains(@class, "vsl-short")]//li'):
-      Log(HTML.StringFromElement(item))
+
       url = item.xpath('.//a')[0].get('href')
       title = item.xpath('./a/text()')[0]
       thumb = item.xpath('.//img[@class = "thumbnail"]')[0].get('src')
