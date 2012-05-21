@@ -1,94 +1,61 @@
-CACHE_INTERVAL = 3600
-HULU_ASSETS = 'http://r.hulu.com/videos?eid=%s&include=video_assets'
+CACHE_INTERVAL            = 3600
+
+HULU_ASSETS               = 'http://r.hulu.com/videos?eid=%s&include=video_assets'
+
+REGEX_TV_EPISODE_FEED     = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P<episode>[0-9]+) - (?P<title>.+)$')
+
+NAMESPACES                = {'activity': 'http://activitystrea.ms/spec/1.0/',
+                             'media': 'http://search.yahoo.com/mrss/'}
 
 def Search(query):
 
   # Create a container to hold the results
-  c = ObjectContainer()
+  oc = ObjectContainer()
 
   query = query.replace(" ","+") + "+site:hulu"
-  SearchURL = "http://www.hulu.com/feed/search?query=" + query + "&sort_by=relevance"
+  feed_url = "http://www.hulu.com/feed/search?query=" + query + "&sort_by=relevance"
   
-  feed = XML.ElementFromURL(SearchURL, errors='ignore', cacheTime=CACHE_INTERVAL).xpath("//item")
+  feed = XML.ElementFromURL(feed_url, cacheTime=CACHE_INTERVAL)
+  for item in feed.xpath('//channel/item'):
+    url = item.xpath('.//link/text()')[0]
+    thumb = item.xpath('.//media:thumbnail', namespaces = NAMESPACES)[0].get('url')
+    date = Datetime.ParseDate(item.xpath('.//pubDate/text()')[0])
+
+    summary_text = item.xpath('.//description/text()')[0]
+    summary_node = HTML.ElementFromString(summary_text)
+    summary = summary_node.xpath('.//p/text()')[0]
  
-  for e in feed:
+    rating = None
+    try: rating = float(REGEX_RATING_FEED.findall(summary_text)[0]) * 2
+    except: pass
 
-      playUrl = e.xpath("guid")[0].text.split("#")[0]#.replace(':',"%3A")
-        
-      if not(('watch' in playUrl)):
-        request = urllib2.Request(playUrl, None, headers)
-        opener = urllib2.build_opener(SmartRedirectHandler)
-        try:
-          f = opener.open(request)
-          if f.status == 301 or f.status == 302:
-		    playUrl = f.url
-		    playUrl = HTTP.Request(playUrl, cacheTime=CACHE_INTERVAL).xpath("//meta[@'property=og:url']")[0].get('content')
-        except:
-          pass
-		  
-      api_address = "http://www.hulu.com/api/oembed.json?url="+playUrl
-      try:
-        jsonObj = JSON.ObjectFromURL(api_address, cacheTime=CACHE_INTERVAL)
-      except: 
-        jsonObj = JSON.ObjectFromURL(api_address.rsplit('/',1)[0], cacheTime=CACHE_INTERVAL)
-		  
-      eid = jsonObj['embed_url'].split('embed/')[1].split('/')[0]
+    title = item.xpath('.//title/text()')[0]
+    try:
 
-      details = XML.ElementFromURL(HULU_ASSETS %eid, cacheTime=CACHE_INTERVAL)
-	  
-      desc = details.xpath('//video/description')[0].text
-      try:
-        airdate = Datetime.ParseDate(details.xpath('//video/original-premiere-date')[0].text).date()
-      except:
-        airdate = Datetime.ParseDate(details.xpath('//video/first-available-at')[0].text).date()
-      duration =  int(float(details.xpath('//video/duration')[0].text)*1000)
-      thumb = details.xpath('//video/thumbnail-url')[0].text
-      art = ""
-      rating =  float(details.xpath('//video/user-star-rating')[0].text)
-      plusonly =  details.xpath('//video/is-plus-web-only')[0].text
-      if (plusonly == 'true'):
-        plustext = "HuluPlus - "
-      else:
-        plustext = ""
-      title =  plustext + details.xpath('//video/title')[0].text
-      
-      try:
-        show_title = details.xpath('//video/show/name')[0].text
-        season = details.xpath('//video/season-number')[0].text
-        episode = details.xpath('//video/episode-number')[0].text
+      # A feed will normally contain individual episodes. Their titles are of formats similar to the following:
+      #    The Voice - s2 | e15 - Quarterfinals: Live Eliminations
+      # If we detect this, then we can extract the available information. If this fails, then we will simply 
+      # fallback to a normal VideoClipObject
+      details = REGEX_TV_EPISODE_FEED.match(title).groupdict()
 
-        c.add(EpisodeObject(
-          title = title,
-          show = show_title,
-          duration = duration,
-          season = int(season),
-          index = int(episode),
-          originally_available_at = airdate,
-          summary = desc,
-          source_title = 'Hulu',
-          thumb = thumb,
-          url = playUrl
-        ))
-      except:
-        if 'Movie' in details.xpath('//video/programming-type')[0].text:
-          c.add(MovieObject(
-            title = title,
-            duration = duration,
-            summary = desc,
-            thumb = thumb,
-            source_title = 'Hulu',
-            originally_available_at = airdate,
-            url = playUrl
-          ))
-        else:
-          c.add(VideoClipObject(
-            title = title,
-            duration = duration,
-            summary = desc,
-            thumb = thumb,
-            source_title = 'Hulu',
-            originally_available_at = airdate,
-            url = playUrl
-          ))
+      oc.add(EpisodeObject(
+        url = url,
+        title = details['title'],
+        summary = summary,
+        show = details['show'],
+        season = int(details['season']),
+        index = int(details['episode']),
+        thumb = thumb,
+        originally_available_at = date,
+        rating = rating))
+    except:
 
-  return c
+      oc.add(VideoClipObject(
+        url = url,
+        title = title,
+        summary = summary,
+        thumb = thumb,
+        originally_available_at = date,
+        rating = rating))
+
+  return oc
