@@ -79,7 +79,7 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(MostRecent, title = "Recently Added"), title = "Recently Added"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Highest Rated Videos", feed_url = "http://www.hulu.com/feed/highest_rated/videos"), title = "Highest Rated Videos"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Soon-to-Expire Videos", feed_url = "http://www.hulu.com/feed/expiring/videos"), title = "Soon-to-Expire Videos"))
-  oc.add(SearchDirectoryObject(identifier="com.plexapp.search.hulu", title = "Search...", prompt = "Search for Videos", thumb = R(ICON_SEARCH)))
+  oc.add(SearchDirectoryObject(identifier="com.plexapp.plugins.hulu", title = "Search...", prompt = "Search for Videos", thumb = R(ICON_SEARCH)))
   oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
   return oc
 
