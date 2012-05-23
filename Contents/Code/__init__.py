@@ -1,4 +1,4 @@
-import re, random
+import random
 
 PREFIX          = "/video/hulu" 
 
@@ -13,7 +13,7 @@ EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_pe
 URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list'
 
 REGEX_CHANNEL_LISTINGS      = Regex('Element.replace\("channel", "(.+)\);')
-REGEX_SHOW_LISTINGS         = Regex('Element.update\("show_list", "(.+)\);')
+REGEX_SHOW_LISTINGS         = Regex('Element.(update|replace)\("(show_list|browse-lazy-load)", "(?P<content>.+)\);')
 REGEX_RECOMMENDED_LISTINGS  = Regex('Element.update\("rec-hub-main", "(.+)\);')
 REGEX_RATING_FEED           = Regex('Rating: ([^ ]+) .+')
 REGEX_TV_EPISODE_FEED       = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P<episode>[0-9]+) - (?P<title>.+)$')
@@ -23,8 +23,6 @@ REGEX_TV_EPISODE_QUEUE      = Regex('S(?P<season>[0-9]+) : Ep\. (?P<episode>[0-9
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
-
-CACHE_INTERVAL  = 3600
 
 ####################################################################################################
 def Start():
@@ -42,7 +40,8 @@ def Start():
   VideoClipObject.thumb = R(ICON_DEFAULT)
   VideoClipObject.art = R(ART)
 
-  HTTP.CacheTime = CACHE_INTERVAL
+  HTTP.CacheTime = CACHE_1HOUR
+  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:12.0) Gecko/20100101 Firefox/12.0'
 
   loginResult = HuluLogin()
   Log("Login success: " + str(loginResult))
@@ -183,12 +182,12 @@ def Feeds(title, feed_url):
   return oc
 
 ####################################################################################################
-def ListShows(title, channel, item_type, display):
+def ListShows(title, channel, item_type, display, page = 0):
   oc = ObjectContainer()
 
   channel = channel.replace(' ','%20')
-  shows_page = HTTP.Request(URL_LISTINGS % (channel, display, item_type, 0)).content
-  html_content = REGEX_SHOW_LISTINGS.findall(shows_page)[0].decode('unicode_escape')
+  shows_page = HTTP.Request(URL_LISTINGS % (channel, display, item_type, str(page))).content
+  html_content = REGEX_SHOW_LISTINGS.search(shows_page).group('content').decode('unicode_escape')
   html_page = HTML.ElementFromString(html_content)
 
   for item in html_page.xpath('//a[@class = "info_hover"]'):
@@ -196,8 +195,11 @@ def ListShows(title, channel, item_type, display):
     if original_url.startswith('http://www.hulu.com/') == False:
       continue
 
+    # There are a very, very small percentage of videos for which they appear to contain 'invalid'
+    # JSON. At present, there is no known workaround, so we should simply skip it.
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
-    details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
+    try: details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
+    except: continue
 
     tags = []
     if 'taggings' in details:
@@ -223,6 +225,17 @@ def ListShows(title, channel, item_type, display):
         episode_count = details['episodes_count'],
         viewed_episode_count = 0,
         tags = tags))
+
+  # Add an option for the next page. We will only return the MessageContainer if we have at least grabbed one page. If the above
+  # code is faulty and the first page fails, we want to return the empty ObjectContainer. This will allow us to detect the error
+  # by the tester and hopefully fix the issue quickly.
+  if len(oc) > 0:
+    oc.add(DirectoryObject(
+      key = Callback(ListShows, title = title, channel = channel, item_type = item_type, display = display, page = page + 1),
+      title = "Next..."))
+  elif page > 0:
+    return MessageContainer("No More Results", "There are no more shows...")
+
 
   return oc
 
