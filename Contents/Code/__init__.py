@@ -9,7 +9,7 @@ ICON_SEARCH     = 'icon-search.png'
 ICON_PREFS      = 'icon-prefs.png'
 
 URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
-EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
+EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
 URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list'
 
 REGEX_CHANNEL_LISTINGS      = Regex('Element.replace\("channel", "(.+)\);')
@@ -17,7 +17,7 @@ REGEX_SHOW_LISTINGS         = Regex('Element.(update|replace)\("(show_list|brows
 REGEX_RECOMMENDED_LISTINGS  = Regex('Element.update\("rec-hub-main", "(.+)\);')
 REGEX_RATING_FEED           = Regex('Rating: ([^ ]+) .+')
 REGEX_TV_EPISODE_FEED       = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(?P<episode>[0-9]+) - (?P<title>.+)$')
-REGEX_TV_EPISODE_LISTING    = Regex('Season (?P<season>[0-9]+) : Ep. (?P<episode>[0-9]+).*\((?P<mins>[0-9]+):(?P<secs>[0-9]+)\)', Regex.DOTALL)
+REGEX_TV_EPISODE_LISTING    = Regex('Season (?P<season>[0-9]+) : Ep. (?P<episode>[0-9]+).*\(((?P<hours>[0-9])+:)?(?P<mins>[0-9]+):(?P<secs>[0-9]+)\)', Regex.DOTALL)
 REGEX_TV_EPISODE_EMBED      = Regex('Season (?P<season>[0-9]+)\s+.+')
 REGEX_TV_EPISODE_QUEUE      = Regex('S(?P<season>[0-9]+) : Ep\. (?P<episode>[0-9]+)')
 
@@ -281,15 +281,25 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
   oc = ObjectContainer(title2 = title)
 
   page = 1
+  original_url = EPISODE_LISTINGS % (items_per_page, int(season), show_id)
+  category = None
   while(True):
 
-    episode_url = EPISODE_LISTINGS % (items_per_page, page, int(season), show_id)
+    episode_url = original_url + ('&page=%d' % page)
     episodes_page_content = HTTP.Request(episode_url).content
+
     if len(episodes_page_content) == 0 and page == 1:
-      episode_url = episode_url + "&category=Full%20Episodes"
+      episode_url = original_url + "&category=Full%20Episodes"
       episodes_page_content = HTTP.Request(episode_url).content
-      if len(episodes_page_content) == 0:
-        break
+      if len(episodes_page_content) == 0 and page == 1:
+        episode_url = original_url + "&category=Subtitled"
+        episodes_page_content = HTTP.Request(episode_url).content
+        if len(episodes_page_content) == 0:
+          break
+        else:
+          original_url = episode_url
+      else:
+        original_url = episode_url
 
     episodes_page = HTML.ElementFromString(episodes_page_content)
 
@@ -306,9 +316,13 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
       episode_index = int(details_dict['episode'])
+
+      hours = 0
+      try: hours = int(details_dict['hours'])
+      except: pass
       mins = int(details_dict['mins'])
       secs = int(details_dict['secs'])
-      duration = ((mins * 60) + secs) * 1000
+      duration = ((((hours * 60) + mins) * 60) + secs) * 1000
 
       oc.add(EpisodeObject(
         url = url,
@@ -336,9 +350,10 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
       episode_index = int(details_dict['episode'])
+      hours = int(details_dict['hours'])
       mins = int(details_dict['mins'])
       secs = int(details_dict['secs'])
-      duration = ((mins * 60) + secs) * 1000
+      duration = ((((hours * 60) + mins) * 60) + secs) * 1000
 
       oc.add(EpisodeObject(
         url = url,
