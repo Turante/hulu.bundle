@@ -349,7 +349,10 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
       episode_index = int(details_dict['episode'])
-      hours = int(details_dict['hours'])
+      
+      hours = 0
+      try: hours = int(details_dict['hours'])
+      except: pass
       mins = int(details_dict['mins'])
       secs = int(details_dict['secs'])
       duration = ((((hours * 60) + mins) * 60) + secs) * 1000
