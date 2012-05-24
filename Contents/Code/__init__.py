@@ -463,13 +463,17 @@ def Recommended(title, url):
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
     details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
+    tags = []
+    if 'taggings' in details:
+      tags = [ tag['tag_name'] for tag in details['taggings'] ]
+
     if details.has_key('films_count'):
       oc.add(MovieObject(
         url = original_url,
         title = details['name'],
         summary = details['description'],
         thumb = details['thumbnail_url'],
-        tags = [ tag['tag_name'] for tag in details['taggings'] ],
+        tags = tags,
         originally_available_at = Datetime.ParseDate(details['film_date'])))
 
     elif details.has_key('episodes_count') and details['episodes_count'] > 0:
@@ -482,7 +486,7 @@ def Recommended(title, url):
         thumb = details['thumbnail_url'],
         episode_count = details['episodes_count'],
         viewed_episode_count = 0,
-        tags = [ tag['tag_name'] for tag in details['taggings'] ]))
+        tags = tags))
 
   return oc
 
