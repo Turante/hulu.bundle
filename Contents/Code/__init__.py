@@ -282,7 +282,6 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
 
   page = 1
   original_url = EPISODE_LISTINGS % (items_per_page, int(season), show_id)
-  category = None
   while(True):
 
     episode_url = original_url + ('&page=%d' % page)
