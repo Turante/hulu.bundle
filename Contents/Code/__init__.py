@@ -505,7 +505,6 @@ def Favorites(title):
 
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
     details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
-    Log(JSON.StringFromObject(details))
 
     tags = []
     if 'taggings' in details:
