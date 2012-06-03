@@ -94,7 +94,7 @@ def MyHulu(title):
     oc.add(DirectoryObject(key = Callback(Queue, title = "My Queue"), title = "My Queue"))
     oc.add(DirectoryObject(key = Callback(Recommended, title = "TV Show Recommendations", url = "http://www.hulu.com/recommendation/search?closed_captioned=0&video_type=TV"), title = "TV Show Recommendations"))
     oc.add(DirectoryObject(key = Callback(Recommended, title = "Movie Recommendations", url = "http://www.hulu.com/recommendation/search?closed_captioned=0&video_type=Movie"), title = "Movie Recommendations"))
-    #oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
+    oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
   else:
     oc = MessageContainer("User info required", "Please enter your Hulu email address and password in Preferences.")
   return oc
@@ -498,6 +498,27 @@ def Favorites(title):
   oc = ObjectContainer(title2 = title)
 
   url = 'http://www.hulu.com/favorites/favorites_nav?user_id=' + Dict['_hulu_uid']
-  Log(url)
+  favourites_page = HTML.ElementFromURL(url)
+  for show in favourites_page.xpath("//div[@class='fav-nav-show']"):
+
+    original_url = show.xpath("./a")[0].get("href")
+
+    info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
+    details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
+    Log(JSON.StringFromObject(details))
+
+    tags = []
+    if 'taggings' in details:
+      tags = [ tag['tag_name'] for tag in details['taggings'] ]
+
+    oc.add(TVShowObject(
+      key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
+      rating_key = original_url,
+      title = details['name'],
+      summary = details['description'],
+      thumb = details['thumbnail_url'],
+      episode_count = details['episodes_count'],
+      viewed_episode_count = 0,
+      tags = tags))
 
   return oc
