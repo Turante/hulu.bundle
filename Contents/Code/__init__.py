@@ -10,7 +10,7 @@ ICON_PREFS      = 'icon-prefs.png'
 
 URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
 EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
-URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list'
+URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list&kind=thumbs&order=asc&page=%d&sort=position'
 
 REGEX_CHANNEL_LISTINGS      = Regex('Element.replace\("channel", "(.+)\);')
 REGEX_SHOW_LISTINGS         = Regex('Element.(update|replace)\("(show_list|browse-lazy-load)", "(?P<content>.+)\);')
@@ -371,11 +371,11 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
   return oc
 
 ####################################################################################################
-def Queue(title):
+def Queue(title, page = 1):
   oc = ObjectContainer(title2 = title)
 
-  page = HTML.ElementFromURL(URL_QUEUE)
-  for item in page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
+  queue_page = HTML.ElementFromURL(URL_QUEUE % page)
+  for item in queue_page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
 
     url = item.xpath('.//td[@class = "c2"]//a')[0].get('href')
     title = ''.join(item.xpath('.//td[@class = "c2"]//a//text()'))
@@ -431,6 +431,13 @@ def Queue(title):
           rating = rating,
           originally_available_at = date,
           duration = duration))
+
+  # Check to see if the user has any more pages...
+  page_control = queue_page.xpath('//div[@class = "page"]')
+  if len(page_control) > 0:
+    total_pages = int(page_control[0].xpath('.//li[@class = "total"]/a/text()')[0])
+    if page < total_pages:
+      oc.add(DirectoryObject(key = Callback(Queue, title = "My Queue", page = page + 1), title = "Next..."))
 
   return oc
 
