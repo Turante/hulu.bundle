@@ -8,13 +8,13 @@ def Search(query):
 
   query = query.replace(" ","+") + "+site:hulu"
   SearchURL = "http://www.hulu.com/feed/search?query=" + query + "&sort_by=relevance"
-  
+
   feed = XML.ElementFromURL(SearchURL, errors='ignore', cacheTime=CACHE_INTERVAL).xpath("//item")
- 
+
   for e in feed:
 
       playUrl = e.xpath("guid")[0].text.split("#")[0]#.replace(':',"%3A")
-        
+
       if not(('watch' in playUrl)):
         request = urllib2.Request(playUrl, None, headers)
         opener = urllib2.build_opener(SmartRedirectHandler)
@@ -25,17 +25,14 @@ def Search(query):
 		    playUrl = HTTP.Request(playUrl, cacheTime=CACHE_INTERVAL).xpath("//meta[@'property=og:url']")[0].get('content')
         except:
           pass
-		  
+
       api_address = "http://www.hulu.com/api/oembed.json?url="+playUrl
-      try:
-        jsonObj = JSON.ObjectFromURL(api_address, cacheTime=CACHE_INTERVAL)
-      except: 
-        jsonObj = JSON.ObjectFromURL(api_address.rsplit('/',1)[0], cacheTime=CACHE_INTERVAL)
-		  
-      eid = jsonObj['embed_url'].split('embed/')[1].split('/')[0]
+      jsonObj = JSON.ObjectFromURL(api_address, cacheTime=CACHE_INTERVAL)
+
+      eid = jsonObj['embed_url'].split('?eid=')[1]
 
       details = XML.ElementFromURL(HULU_ASSETS %eid, cacheTime=CACHE_INTERVAL)
-	  
+
       desc = details.xpath('//video/description')[0].text
       try:
         airdate = Datetime.ParseDate(details.xpath('//video/original-premiere-date')[0].text).date()
@@ -51,7 +48,7 @@ def Search(query):
       else:
         plustext = ""
       title =  plustext + details.xpath('//video/title')[0].text
-      
+
       try:
         show_title = details.xpath('//video/show/name')[0].text
         season = details.xpath('//video/season-number')[0].text
