@@ -20,6 +20,7 @@ REGEX_TV_EPISODE_FEED       = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(
 REGEX_TV_EPISODE_LISTING    = Regex('Season (?P<season>[0-9]+) : Ep. (?P<episode>[0-9]+).*\(((?P<hours>[0-9])+:)?(?P<mins>[0-9]+):(?P<secs>[0-9]+)\)', Regex.DOTALL)
 REGEX_TV_EPISODE_EMBED      = Regex('Season (?P<season>[0-9]+)\s+.+')
 REGEX_TV_EPISODE_QUEUE      = Regex('S(?P<season>[0-9]+) : Ep\. (?P<episode>[0-9]+)')
+REGEX_TV_SEASONS            = Regex('season_number=([0-9]+)')
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
@@ -150,7 +151,7 @@ def Feeds(title, feed_url):
     try: rating = float(REGEX_RATING_FEED.findall(summary_text)[0]) * 2
     except: pass
 
-    title = item.xpath('.//title/text()')[0]
+    title = item.xpath('.//title/text()')[0].replace("\n", " ")
     try:
 
       # A feed will normally contain individual episodes. Their titles are of formats similar to the following:
@@ -243,22 +244,26 @@ def ListShows(title, channel, item_type, display, page = 0):
 def ListSeasons(title, show_url, info_url, show_id):
   oc = ObjectContainer(title2 = title)
 
-  show_page = HTML.ElementFromURL(show_url)
   details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
-  for season in show_page.xpath('//div[@id = "episode-container"]//div[contains(@class, "season-filter")]/ul/li/text()'):
-    if season == 'All':
-      continue
+  show_page = HTTP.Request(show_url).content
+  seasons = REGEX_TV_SEASONS.findall(show_page)
 
-    season_number = int(season)
-    oc.add(SeasonObject(
-      key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = season_number, show_url = show_url),
-      rating_key = show_url,
-      show = details['name'],
-      index = season_number,
-      title = "Season %d" % season_number,
-      summary = details['description'],
-      thumb = details['thumbnail_url']))
+  if len(seasons) > 0:
+    seasons = list(set(seasons))
+    seasons.sort()
+
+    for season in seasons:
+      season_number = int(season)
+
+      oc.add(SeasonObject(
+        key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = season_number, show_url = show_url),
+        rating_key = show_url,
+        show = details['name'],
+        index = season_number,
+        title = "Season %d" % season_number,
+        summary = details['description'],
+        thumb = details['thumbnail_url']))
 
   if len(oc) == 0:
     # If we haven't found a list of seasons, we can assume that there is only one. However, we still
