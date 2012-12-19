@@ -140,7 +140,7 @@ def Feeds(title, feed_url):
   feed = XML.ElementFromURL(feed_url)
   for item in feed.xpath('//channel/item'):
     url = item.xpath('.//guid/text()')[0]
-    thumb = item.xpath('.//media:thumbnail', namespaces = NAMESPACES)[0].get('url')
+    thumb = item.xpath('.//media:thumbnail', namespaces = NAMESPACES)[0].get('url').split('?')[0] + '?size=512x288'
     date = Datetime.ParseDate(item.xpath('.//pubDate/text()')[0])
 
     summary_text = item.xpath('.//description/text()')[0]
@@ -263,7 +263,8 @@ def ListSeasons(title, show_url, info_url, show_id):
         index = season_number,
         title = "Season %d" % season_number,
         summary = details['description'],
-        thumb = details['thumbnail_url']))
+        thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288'
+      ))
 
   if len(oc) == 0:
     # If we haven't found a list of seasons, we can assume that there is only one. However, we still
@@ -315,7 +316,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
     for item in episodes:
       url = item.xpath('.//a')[0].get('href')
       title = item.xpath('.//a/text()')[0]
-      thumb = item.xpath('.//img')[0].get('src')
+      thumb = item.xpath('.//img')[0].get('src').split('?')[0] + '?size=512x288'
 
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
@@ -349,7 +350,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
 
       url = item.xpath('.//a')[0].get('href')
       title = item.xpath('./a/text()')[0]
-      thumb = item.xpath('.//img[@class = "thumbnail"]')[0].get('src')
+      thumb = item.xpath('.//img[@class = "thumbnail"]')[0].get('src').split('?')[0] + '?size=512x288'
 
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
@@ -384,7 +385,7 @@ def Queue(title, page = 1):
 
     url = item.xpath('.//td[@class = "c2"]//a')[0].get('href')
     title = ''.join(item.xpath('.//td[@class = "c2"]//a//text()'))
-    thumb = item.xpath('.//td[@class = "c2"]//img')[0].get('src')
+    thumb = item.xpath('.//td[@class = "c2"]//img')[0].get('src').split('?')[0] + '?size=512x288'
     date = item.xpath('.//td[@class = "c5"]/text()')[0]
     date = Datetime.ParseDate(date)
     duration = int(TimeToMs(item.xpath('.//td[@class = "c2"]//span/text()')[0]))
@@ -487,7 +488,7 @@ def Recommended(title, url):
         url = original_url,
         title = details['name'],
         summary = details['description'],
-        thumb = details['thumbnail_url'],
+        thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
         tags = tags,
         originally_available_at = Datetime.ParseDate(details['film_date'])))
 
@@ -498,7 +499,7 @@ def Recommended(title, url):
         rating_key = original_url,
         title = details['name'],
         summary = details['description'],
-        thumb = details['thumbnail_url'],
+        thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
         episode_count = details['episodes_count'],
         viewed_episode_count = 0,
         tags = tags))
@@ -527,7 +528,7 @@ def Favorites(title):
       rating_key = original_url,
       title = details['name'],
       summary = details['description'],
-      thumb = details['thumbnail_url'],
+      thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
       episode_count = details['episodes_count'],
       viewed_episode_count = 0,
       tags = tags))
