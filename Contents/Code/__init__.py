@@ -243,10 +243,7 @@ def ListShows(title, channel, item_type, display, page = 0):
 def ListSeasons(title, show_url, info_url, show_id):
   oc = ObjectContainer(title2 = title)
 
-  show_page = HTTP.Request(show_url).content
-  raw_data_string = show_page[show_page.find('var rawData = ') + 14:]
-  raw_data_string = raw_data_string[:raw_data_string.find('}\n')+1]
-  details = JSON.ObjectFromString(raw_data_string)
+  details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
   if int(details['seasons_count']) > 1:
     for i in range(int(details['seasons_count'])):
@@ -259,7 +256,7 @@ def ListSeasons(title, show_url, info_url, show_id):
         index = int(season_num),
         title = "Season %s" % season_num,
         summary = details['description'],
-        thumb = details['key_art_url']))
+        thumb = details['thumbnail_url']))
 
   else:
     try:
