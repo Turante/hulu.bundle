@@ -20,7 +20,6 @@ REGEX_TV_EPISODE_FEED       = Regex('(?P<show>[^-]+) - s(?P<season>[0-9]+) \| e(
 REGEX_TV_EPISODE_LISTING    = Regex('Season (?P<season>[0-9]+) : Ep. (?P<episode>[0-9]+).*\(((?P<hours>[0-9])+:)?(?P<mins>[0-9]+):(?P<secs>[0-9]+)\)', Regex.DOTALL)
 REGEX_TV_EPISODE_EMBED      = Regex('Season (?P<season>[0-9]+)\s+.+')
 REGEX_TV_EPISODE_QUEUE      = Regex('S(?P<season>[0-9]+) : Ep\. (?P<episode>[0-9]+)')
-REGEX_TV_SEASONS            = Regex('season_number=([0-9]+)')
 
 NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
                    'media': 'http://search.yahoo.com/mrss/'}
@@ -246,35 +245,25 @@ def ListSeasons(title, show_url, info_url, show_id):
 
   details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
-  show_page = HTTP.Request(show_url).content
-  seasons = REGEX_TV_SEASONS.findall(show_page)
+  if int(details['seasons_count']) > 1:
+    for i in range(int(details['seasons_count'])):
 
-  if len(seasons) > 0:
-    seasons = list(set(seasons))
-    seasons.sort()
-
-    for season in seasons:
-      season_number = int(season)
-
+      season_num = str(i+1)
       oc.add(SeasonObject(
-        key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = season_number, show_url = show_url),
+        key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = int(season_num), show_url = show_url),
         rating_key = show_url,
         show = details['name'],
-        index = season_number,
-        title = "Season %d" % season_number,
+        index = int(season_num),
+        title = "Season %s" % season_num,
         summary = details['description'],
         thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288'
       ))
 
-  if len(oc) == 0:
-    # If we haven't found a list of seasons, we can assume that there is only one. However, we still
-    # need to extract this information so that we can correctly return the episodes directly.
+  else:
     try:
-      show_id = show_page.xpath('//input[@name = "shared_id"]')[0].get('value')
-      show_name = show_page.xpath('//meta[@property = "og:title"]')[0].get('content')
-
-      season_text = show_page.xpath('//span[@class = "video-info"]/text()')[0]
-      season = REGEX_TV_EPISODE_EMBED.match(season_text).groupdict()['season']
+      show_id = details['id']
+      show_name = details['name']
+      season = '1'
 
       return ListEpisodes(title, show_id, show_name, season, show_url = show_url)
     except: 
