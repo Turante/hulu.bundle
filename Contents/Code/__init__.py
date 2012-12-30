@@ -69,6 +69,7 @@ def HuluLogin():
     return False
         
 ####################################################################################################
+@handler('/video/hulu', 'Hulu', thumb=ICON_DEFAULT, art=ART)
 def MainMenu():
   oc = ObjectContainer()
   oc.add(DirectoryObject(key = Callback(MyHulu, title = "My Hulu"), title = "My Hulu"))
@@ -83,6 +84,7 @@ def MainMenu():
   return oc
 
 ####################################################################################################
+@route('/video/hulu/myhulu')
 def MyHulu(title):
 
   # Attempt to login
@@ -100,6 +102,7 @@ def MyHulu(title):
   return oc
   
 ####################################################################################################
+@route('/video/hulu/channels')
 def Channels(title, item_type, display):
   oc = ObjectContainer(title2 = title)
 
@@ -116,6 +119,7 @@ def Channels(title, item_type, display):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/popular')
 def MostPopular(title):
   oc = ObjectContainer(title2 = title)
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Popular Videos Today", feed_url = "http://www.hulu.com/feed/popular/videos/today"), title = "Popular Videos Today"))
@@ -125,6 +129,7 @@ def MostPopular(title):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/recent')
 def MostRecent(title):
   oc = ObjectContainer(title2 = title)
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Recently Added Shows", feed_url = "http://www.hulu.com/feed/recent/shows"), title = "Recently Added Shows"))
@@ -133,6 +138,7 @@ def MostRecent(title):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/feeds')
 def Feeds(title, feed_url):
   oc = ObjectContainer(title2 = title)
 
@@ -182,6 +188,7 @@ def Feeds(title, feed_url):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/shows/{page}', page=int)
 def ListShows(title, channel, item_type, display, page = 0):
   
   oc = ObjectContainer()
@@ -256,6 +263,7 @@ def ListShows(title, channel, item_type, display, page = 0):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/seasons')
 def ListSeasons(title, show_url, info_url, show_id):
   oc = ObjectContainer(title2 = title)
 
@@ -288,6 +296,7 @@ def ListSeasons(title, show_url, info_url, show_id):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/episodes')
 def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_page = 5):
   oc = ObjectContainer(title2 = title)
 
@@ -382,6 +391,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
   return oc
 
 ####################################################################################################
+@route('/video/hulu/queue')
 def Queue(title, page = 1):
   oc = ObjectContainer(title2 = title)
 
@@ -512,6 +522,7 @@ def Recommended(title, url):
   return oc
 
 ####################################################################################################
+@route('/video/hulu/favorites')
 def Favorites(title):
   oc = ObjectContainer(title2 = title)
 
