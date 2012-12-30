@@ -183,54 +183,70 @@ def Feeds(title, feed_url):
 
 ####################################################################################################
 def ListShows(title, channel, item_type, display, page = 0):
+  
   oc = ObjectContainer()
+  result = {}
 
-  channel = channel.replace(' ','%20')
-  shows_page = HTTP.Request(URL_LISTINGS % (channel, display, item_type, str(page))).content
-  html_content = REGEX_SHOW_LISTINGS.search(shows_page).group('content').decode('unicode_escape')
-  html_page = HTML.ElementFromString(html_content)
+  @parallelize
+  def GetShows(channel=channel, item_type=item_type, display=display, page=page):
 
-  for item in html_page.xpath('//a[@class = "info_hover"]'):
-    original_url = item.get('href').split('?')[0]
-    if original_url.startswith('http://www.hulu.com/') == False:
-      continue
+    channel = channel.replace(' ','%20')
+    shows_page = HTTP.Request(URL_LISTINGS % (channel, display, item_type, str(page))).content
+    html_content = REGEX_SHOW_LISTINGS.search(shows_page).group('content').decode('unicode_escape')
+    html_page = HTML.ElementFromString(html_content)
+    shows = html_page.xpath('//a[@class = "info_hover"]')
 
-    # There are a very, very small percentage of videos for which they appear to contain 'invalid'
-    # JSON. At present, there is no known workaround, so we should simply skip it.
-    info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
-    try: details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
-    except: continue
+    for num in range(len(shows)):
+      show = shows[num]
 
-    tags = []
-    if 'taggings' in details:
-      tags = [ tag['tag_name'] for tag in details['taggings'] ]
+      @task
+      def GetShow(num=num, result=result, item=show):
+        original_url = item.get('href').split('?')[0]
+        if original_url.startswith('http://www.hulu.com/') == False:
+          pass
 
-    if details.has_key('films_count'):
-      oc.add(MovieObject(
-        url = original_url,
-        title = details['name'],
-        summary = details['description'],
-        thumb = details['thumbnail_url'],
-        tags = tags,
-        originally_available_at = Datetime.ParseDate(details['film_date'])))
+        # There are a very, very small percentage of videos for which they appear to contain 'invalid'
+        # JSON. At present, there is no known workaround, so we should simply skip it.
+        info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
+        try: details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
+        except: pass
 
-    elif details.has_key('episodes_count') and details['episodes_count'] > 0:
+        tags = []
+        if 'taggings' in details:
+          tags = [ tag['tag_name'] for tag in details['taggings'] ]
 
-      oc.add(TVShowObject(
-        key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
-        rating_key = original_url,
-        title = details['name'],
-        summary = details['description'],
-        thumb = details['thumbnail_url'],
-        episode_count = details['episodes_count'],
-        viewed_episode_count = 0,
-        tags = tags))
+        if details.has_key('films_count'):
+          result[num] = MovieObject(
+            url = original_url,
+            title = details['name'],
+            summary = details['description'],
+            thumb = details['thumbnail_url'],
+            tags = tags,
+            originally_available_at = Datetime.ParseDate(details['film_date']))
+
+        elif details.has_key('episodes_count') and details['episodes_count'] > 0:
+
+          result[num] = TVShowObject(
+            key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
+            rating_key = original_url,
+            title = details['name'],
+            summary = details['description'],
+            thumb = details['thumbnail_url'],
+            episode_count = details['episodes_count'],
+            viewed_episode_count = 0,
+            tags = tags)
+
+  keys = result.keys()
+  keys.sort()
+
+  for key in keys:
+    oc.add(result[key])
 
   # Add an option for the next page. We will only return the MessageContainer if we have at least grabbed one page. If the above
   # code is faulty and the first page fails, we want to return the empty ObjectContainer. This will allow us to detect the error
   # by the tester and hopefully fix the issue quickly.
   if len(oc) > 0:
-    oc.add(DirectoryObject(
+    oc.add(NextPageObject(
       key = Callback(ListShows, title = title, channel = channel, item_type = item_type, display = display, page = page + 1),
       title = "Next..."))
   elif page > 0:
