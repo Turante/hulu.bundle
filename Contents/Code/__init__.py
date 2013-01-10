@@ -1,12 +1,8 @@
 import random
 
-PREFIX          = "/video/hulu" 
-
-TITLE           = 'Hulu'
-ART             = 'art-default.jpg'
-ICON_DEFAULT    = 'icon-default.png'
-ICON_SEARCH     = 'icon-search.png'
-ICON_PREFS      = 'icon-prefs.png'
+TITLE = 'Hulu'
+ART = 'art-default.jpg'
+ICON = 'icon-default.png'
 
 URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
 EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
@@ -26,7 +22,7 @@ NAMESPACES      = {'activity': 'http://activitystrea.ms/spec/1.0/',
 
 ####################################################################################################
 def Start():
-  Plugin.AddPrefixHandler(PREFIX, MainMenu, TITLE, ICON_DEFAULT, ART)
+
   Plugin.AddViewGroup('InfoList', viewMode = 'InfoList', mediaType = 'items')
   Plugin.AddViewGroup('List', viewMode = 'List', mediaType = 'items')
 
@@ -34,19 +30,19 @@ def Start():
   ObjectContainer.art = R(ART)
   ObjectContainer.view_group = 'List'
 
-  DirectoryObject.thumb = R(ICON_DEFAULT)
+  DirectoryObject.thumb = R(ICON)
   DirectoryObject.art = R(ART)
-  
-  VideoClipObject.thumb = R(ICON_DEFAULT)
+
+  VideoClipObject.thumb = R(ICON)
   VideoClipObject.art = R(ART)
 
   HTTP.CacheTime = CACHE_1HOUR
-  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:12.0) Gecko/20100101 Firefox/12.0'
+  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
   loginResult = HuluLogin()
   Log("Login success: " + str(loginResult))
-        
-####################################################################################################  
+
+####################################################################################################
 def HuluLogin():
 
   username = Prefs["email"]
@@ -56,9 +52,10 @@ def HuluLogin():
     authentication_url = "https://secure.hulu.com/account/authenticate?" + str(int(random.random()*1000000000))
     authentication_headers = {"Cookie": "sli=1; login=" + username + "; password=" + password + ";"}
     resp = HTTP.Request(authentication_url, headers = authentication_headers, cacheTime=0).content
-    
+
     if resp == "Login.onComplete();":
       HTTP.Headers['Cookie'] = HTTP.CookiesForURL('https://secure.hulu.com/')
+
       for item in HTTP.CookiesForURL('https://secure.hulu.com/').split(';'):
         if '_hulu_uid' in item :
           Dict['_hulu_uid'] = item[11:]
@@ -67,10 +64,11 @@ def HuluLogin():
       return False
   else:
     return False
-        
+
 ####################################################################################################
-@handler('/video/hulu', 'Hulu', thumb=ICON_DEFAULT, art=ART)
+@handler('/video/hulu', TITLE, thumb=ICON, art=ART)
 def MainMenu():
+
   oc = ObjectContainer()
   oc.add(DirectoryObject(key = Callback(MyHulu, title = "My Hulu"), title = "My Hulu"))
   oc.add(DirectoryObject(key = Callback(Channels, title = "TV", item_type = "tv", display = "Shows%20with%20full%20episodes%20only"), title = "TV"))
@@ -79,8 +77,8 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(MostRecent, title = "Recently Added"), title = "Recently Added"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Highest Rated Videos", feed_url = "http://www.hulu.com/feed/highest_rated/videos"), title = "Highest Rated Videos"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Soon-to-Expire Videos", feed_url = "http://www.hulu.com/feed/expiring/videos"), title = "Soon-to-Expire Videos"))
-  oc.add(SearchDirectoryObject(identifier="com.plexapp.plugins.hulu", title = "Search...", prompt = "Search for Videos", thumb = R(ICON_SEARCH)))
-  oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
+  oc.add(SearchDirectoryObject(identifier="com.plexapp.plugins.hulu", title = "Search...", prompt = "Search for Videos", thumb = R('search.png')))
+  oc.add(PrefsObject(title = 'Preferences', thumb = R('icon-prefs.png')))
   return oc
 
 ####################################################################################################
@@ -98,14 +96,14 @@ def MyHulu(title):
     oc.add(DirectoryObject(key = Callback(Recommended, title = "Movie Recommendations", url = "http://www.hulu.com/recommendation/search?closed_captioned=0&video_type=Movie"), title = "Movie Recommendations"))
     oc.add(DirectoryObject(key = Callback(Favorites, title = "My Favorites"), title = "My Favorites"))
   else:
-    oc = MessageContainer("User info required", "Please enter your Hulu email address and password in Preferences.")
+    oc = ObjectContainer(header="User info required", message="Please enter your Hulu email address and password in Preferences.")
   return oc
-  
+
 ####################################################################################################
 @route('/video/hulu/channels')
 def Channels(title, item_type, display):
-  oc = ObjectContainer(title2 = title)
 
+  oc = ObjectContainer(title2 = title)
   channels_page = HTTP.Request(URL_LISTINGS % ("All", display, item_type, 0)).content
   html_content = REGEX_CHANNEL_LISTINGS.findall(channels_page)[0].decode('unicode_escape')
   html_page = HTML.ElementFromString(html_content)
@@ -121,6 +119,7 @@ def Channels(title, item_type, display):
 ####################################################################################################
 @route('/video/hulu/popular')
 def MostPopular(title):
+
   oc = ObjectContainer(title2 = title)
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Popular Videos Today", feed_url = "http://www.hulu.com/feed/popular/videos/today"), title = "Popular Videos Today"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Popular Videos This Week", feed_url = "http://www.hulu.com/feed/popular/videos/this_week"), title = "Popular Videos This Week"))
@@ -131,6 +130,7 @@ def MostPopular(title):
 ####################################################################################################
 @route('/video/hulu/recent')
 def MostRecent(title):
+
   oc = ObjectContainer(title2 = title)
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Recently Added Shows", feed_url = "http://www.hulu.com/feed/recent/shows"), title = "Recently Added Shows"))
   oc.add(DirectoryObject(key = Callback(Feeds, title = "Recently Added Movies", feed_url = "http://www.hulu.com/feed/recent/movies"), title = "Recently Added Movies"))
@@ -140,9 +140,10 @@ def MostRecent(title):
 ####################################################################################################
 @route('/video/hulu/feeds')
 def Feeds(title, feed_url):
-  oc = ObjectContainer(title2 = title)
 
+  oc = ObjectContainer(title2 = title)
   feed = XML.ElementFromURL(feed_url)
+
   for item in feed.xpath('//channel/item'):
     url = item.xpath('.//guid/text()')[0]
     thumb = item.xpath('.//media:thumbnail', namespaces = NAMESPACES)[0].get('url').split('?')[0] + '?size=512x288'
@@ -174,16 +175,17 @@ def Feeds(title, feed_url):
         index = int(details['episode']),
         thumb = thumb,
         originally_available_at = date,
-        rating = rating))
+        rating = rating
+      ))
     except:
-
       oc.add(VideoClipObject(
         url = url,
         title = title,
         summary = summary,
         thumb = thumb,
         originally_available_at = date,
-        rating = rating))
+        rating = rating
+      ))
 
   return oc
 
@@ -209,6 +211,7 @@ def ListShows(title, channel, item_type, display, page = 0):
       @task
       def GetShow(num=num, result=result, item=show):
         original_url = item.get('href').split('?')[0]
+
         if original_url.startswith('http://www.hulu.com/') == False:
           pass
 
@@ -229,10 +232,10 @@ def ListShows(title, channel, item_type, display, page = 0):
             summary = details['description'],
             thumb = details['thumbnail_url'],
             tags = tags,
-            originally_available_at = Datetime.ParseDate(details['film_date']))
+            originally_available_at = Datetime.ParseDate(details['film_date'])
+          )
 
         elif details.has_key('episodes_count') and details['episodes_count'] > 0:
-
           result[num] = TVShowObject(
             key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
             rating_key = original_url,
@@ -241,7 +244,8 @@ def ListShows(title, channel, item_type, display, page = 0):
             thumb = details['thumbnail_url'],
             episode_count = details['episodes_count'],
             viewed_episode_count = 0,
-            tags = tags)
+            tags = tags
+          )
 
   keys = result.keys()
   keys.sort()
@@ -257,22 +261,21 @@ def ListShows(title, channel, item_type, display, page = 0):
       key = Callback(ListShows, title = title, channel = channel, item_type = item_type, display = display, page = page + 1),
       title = "Next..."))
   elif page > 0:
-    return MessageContainer("No More Results", "There are no more shows...")
-
+    return ObjectContainer(header="No More Results", message="There are no more shows...")
 
   return oc
 
 ####################################################################################################
 @route('/video/hulu/seasons')
 def ListSeasons(title, show_url, info_url, show_id):
-  oc = ObjectContainer(title2 = title)
 
+  oc = ObjectContainer(title2 = title)
   details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
   if int(details['seasons_count']) > 1:
     for i in range(int(details['seasons_count'])):
-
       season_num = str(i+1)
+
       oc.add(SeasonObject(
         key = Callback(ListEpisodes, title = details['name'], show_id = details['id'], show_name = details['name'], season = int(season_num), show_url = show_url),
         rating_key = show_url,
@@ -298,12 +301,12 @@ def ListSeasons(title, show_url, info_url, show_id):
 ####################################################################################################
 @route('/video/hulu/episodes')
 def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_page = 5):
-  oc = ObjectContainer(title2 = title)
 
+  oc = ObjectContainer(title2 = title)
   page = 1
   original_url = EPISODE_LISTINGS % (items_per_page, int(season), show_id)
-  while(True):
 
+  while(True):
     episode_url = original_url + ('&page=%d' % page)
     episodes_page_content = HTTP.Request(episode_url).content
 
@@ -349,7 +352,8 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
         show = show_name,
         index = episode_index,
         thumb = thumb,
-        duration = duration))
+        duration = duration
+      ))
 
     # If we have requested (items_per_page) but less have been provided, then no more episodes are available
     if len(episodes) != items_per_page:
@@ -360,8 +364,8 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
 
   if len(oc) == 0 and show_url != None:
     show_page = HTML.ElementFromURL(show_url)
-    for item in show_page.xpath('//div[@id = "episode-container"]//div[contains(@class, "vsl-short")]//li'):
 
+    for item in show_page.xpath('//div[@id = "episode-container"]//div[contains(@class, "vsl-short")]//li'):
       url = item.xpath('.//a')[0].get('href')
       title = item.xpath('./a/text()')[0]
       thumb = item.xpath('.//img[@class = "thumbnail"]')[0].get('src').split('?')[0] + '?size=512x288'
@@ -369,7 +373,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
       details = item.xpath('.//span[@class = "video-info"]/text()')[0]
       details_dict = REGEX_TV_EPISODE_LISTING.match(details).groupdict()
       episode_index = int(details_dict['episode'])
-      
+
       hours = 0
       try: hours = int(details_dict['hours'])
       except: pass
@@ -383,7 +387,8 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
         show = show_name,
         index = episode_index,
         thumb = thumb,
-        duration = duration))
+        duration = duration
+      ))
 
   # Sort the episodes based upon index
   oc.objects.sort(key = lambda obj: obj.index)
@@ -393,11 +398,11 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
 ####################################################################################################
 @route('/video/hulu/queue')
 def Queue(title, page = 1):
+
   oc = ObjectContainer(title2 = title)
-
   queue_page = HTML.ElementFromURL(URL_QUEUE % page)
-  for item in queue_page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
 
+  for item in queue_page.xpath('//div[@id = "queue"]//tr[contains(@id, "queue")]'):
     url = item.xpath('.//td[@class = "c2"]//a')[0].get('href')
     title = ''.join(item.xpath('.//td[@class = "c2"]//a//text()'))
     thumb = item.xpath('.//td[@class = "c2"]//img')[0].get('src').split('?')[0] + '?size=512x288'
@@ -422,15 +427,17 @@ def Queue(title, page = 1):
         thumb = thumb,
         rating = rating,
         originally_available_at = date,
-        duration = duration))
+        duration = duration
+      ))
 
     else:
       tv_details = REGEX_TV_EPISODE_QUEUE.match(video_details)
-      if tv_details != None:
 
+      if tv_details != None:
         tv_details_dict = tv_details.groupdict()
         show = title.split(':')[0]
         episode_title = title.split(':')[1]
+
         oc.add(EpisodeObject(
           url = url,
           show = show,
@@ -441,7 +448,8 @@ def Queue(title, page = 1):
           thumb = thumb,
           rating = rating,
           originally_available_at = date,
-          duration = duration))
+          duration = duration
+        ))
 
       else:
         oc.add(VideoClipObject(
@@ -451,7 +459,8 @@ def Queue(title, page = 1):
           thumb = thumb,
           rating = rating,
           originally_available_at = date,
-          duration = duration))
+          duration = duration
+        ))
 
   # Check to see if the user has any more pages...
   page_control = queue_page.xpath('//div[@class = "page"]')
@@ -464,6 +473,7 @@ def Queue(title, page = 1):
 
 ####################################################################################################
 def TimeToMs(timecode):
+
   seconds = 0
   timecode = timecode.strip('(').rstrip(')')
 
@@ -480,8 +490,8 @@ def TimeToMs(timecode):
 
 ####################################################################################################
 def Recommended(title, url):
-  oc = ObjectContainer()
 
+  oc = ObjectContainer()
   shows_page = HTTP.Request(url, headers = {'X-Requested-With': 'XMLHttpRequest'}).content
   html_content = REGEX_RECOMMENDED_LISTINGS.findall(shows_page)[0].decode('unicode_escape')
   html_page = HTML.ElementFromString(html_content)
@@ -505,10 +515,10 @@ def Recommended(title, url):
         summary = details['description'],
         thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
         tags = tags,
-        originally_available_at = Datetime.ParseDate(details['film_date'])))
+        originally_available_at = Datetime.ParseDate(details['film_date'])
+      ))
 
     elif details.has_key('episodes_count') and details['episodes_count'] > 0:
-
       oc.add(TVShowObject(
         key = Callback(ListSeasons, title = details['name'], show_url = original_url, info_url = info_url, show_id = details['id']),
         rating_key = original_url,
@@ -517,21 +527,21 @@ def Recommended(title, url):
         thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
         episode_count = details['episodes_count'],
         viewed_episode_count = 0,
-        tags = tags))
+        tags = tags
+      ))
 
   return oc
 
 ####################################################################################################
 @route('/video/hulu/favorites')
 def Favorites(title):
-  oc = ObjectContainer(title2 = title)
 
+  oc = ObjectContainer(title2 = title)
   url = 'http://www.hulu.com/favorites/favorites_nav?user_id=' + Dict['_hulu_uid']
   favourites_page = HTML.ElementFromURL(url)
+
   for show in favourites_page.xpath("//div[@class='fav-nav-show']"):
-
     original_url = show.xpath("./a")[0].get("href")
-
     info_url = original_url.replace('http://www.hulu.com/', 'http://www.hulu.com/shows/info/')
     details = JSON.ObjectFromURL(info_url, headers = {'X-Requested-With': 'XMLHttpRequest'})
 
@@ -547,6 +557,7 @@ def Favorites(title):
       thumb = details['thumbnail_url'].split('?')[0] + '?size=512x288',
       episode_count = details['episodes_count'],
       viewed_episode_count = 0,
-      tags = tags))
+      tags = tags
+    ))
 
   return oc
