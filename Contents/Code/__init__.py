@@ -467,7 +467,7 @@ def Queue(title, page = 1):
   if len(page_control) > 0:
     total_pages = int(page_control[0].xpath('.//li[@class = "total"]/a/text()')[0])
     if page < total_pages:
-      oc.add(DirectoryObject(key = Callback(Queue, title = "My Queue", page = page + 1), title = "Next..."))
+      oc.add(NextPageObject(key = Callback(Queue, title = "My Queue", page = page + 1), title = "Next..."))
 
   return oc
 
