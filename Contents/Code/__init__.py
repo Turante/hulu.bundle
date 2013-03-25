@@ -5,7 +5,7 @@ ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 
 URL_LISTINGS      = 'http://www.hulu.com/browse/search?keyword=&alphabet=All&family_friendly=0&closed_captioned=0&channel=%s&subchannel=&network=All&display=%s&decade=All&type=%s&view_as_thumbnail=true&block_num=%s'
-EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&season=%d&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
+EPISODE_LISTINGS  = 'http://www.hulu.com/videos/slider?classic_sort=asc&items_per_page=%d&season=%s&show_id=%s&show_placeholders=1&sort=original_premiere_date&type=episode'
 URL_QUEUE         = 'http://www.hulu.com/profile/queue?view=list&kind=thumbs&order=asc&page=%d&sort=position'
 
 REGEX_CHANNEL_LISTINGS      = Regex('Element.replace\("channel", "(.+)\);')
@@ -290,7 +290,7 @@ def ListSeasons(title, show_url, info_url, show_id):
     try:
       show_id = details['id']
       show_name = details['name']
-      season = '1'
+      season = ''
 
       return ListEpisodes(title, show_id, show_name, season, show_url = show_url)
     except: 
@@ -304,7 +304,7 @@ def ListEpisodes(title, show_id, show_name, season, show_url = None, items_per_p
 
   oc = ObjectContainer(title2 = title)
   page = 1
-  original_url = EPISODE_LISTINGS % (items_per_page, int(season), show_id)
+  original_url = EPISODE_LISTINGS % (items_per_page, season, show_id)
 
   while(True):
     episode_url = original_url + ('&page=%d' % page)
